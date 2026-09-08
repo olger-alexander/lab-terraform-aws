@@ -10,19 +10,27 @@ data "aws_availability_zones" "disponibles" {
 }
 
 resource "aws_vpc" "main" {
+  #checkov:skip=CKV2_AWS_11:VPC Flow Logs a CloudWatch tiene costo adicional, fuera de alcance del laboratorio
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags                 = { Name = "${var.prefijo}-vpc" }
 }
 
+resource "aws_default_security_group" "restringido" {
+  vpc_id = aws_vpc.main.id
+  # Sin reglas de ingreso ni egreso: bloquea todo el trafico por defecto
+  tags = { Name = "${var.prefijo}-default-sg-restringido" }
+}
+
 resource "aws_subnet" "publica" {
-  for_each                = local.subnets_publicas
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = each.value
-  availability_zone       = each.key
-  map_public_ip_on_launch = true
-  tags                    = { Name = "${var.prefijo}-publica-${each.key}", Tipo = "publica" }
+  #checkov:skip=CKV_AWS_130:Subnet publica intencional; el ALB requiere IP publica aqui
+  for_each                 = local.subnets_publicas
+  vpc_id                   = aws_vpc.main.id
+  cidr_block                = each.value
+  availability_zone         = each.key
+  map_public_ip_on_launch  = true
+  tags                     = { Name = "${var.prefijo}-publica-${each.key}", Tipo = "publica" }
 }
 
 resource "aws_subnet" "privada" {
@@ -39,6 +47,7 @@ resource "aws_internet_gateway" "igw" {
 }
 
 resource "aws_eip" "nat" {
+  #checkov:skip=CKV2_AWS_19:Falso positivo - la EIP esta asociada a un NAT Gateway, no a una instancia EC2
   count  = var.habilitar_nat ? 1 : 0
   domain = "vpc"
   tags   = { Name = "${var.prefijo}-eip-nat" }

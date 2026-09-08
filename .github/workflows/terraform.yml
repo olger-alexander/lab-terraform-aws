@@ -53,7 +53,7 @@ jobs:
         with:
           directory: .
           framework: terraform
-          soft_fail: true
+          soft_fail: false
 
       - name: Plan
         id: plan
